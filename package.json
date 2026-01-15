@@ -1,15 +1,18 @@
 {
   "name": "mortgage-rate-app",
   "version": "1.0.0",
-  "description": "Commerce Bank Mortgage Rate Form Filler",
+  "description": "Commerce Bank Mortgage Rate Form Filler with Scheduled Alerts",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js",
     "debug": "node index.js --debug",
+    "scheduler": "node scheduler.js",
     "install-browser": "npx playwright install chromium"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.0",
+    "node-cron": "^3.0.3",
     "playwright": "^1.40.0"
   }
 }

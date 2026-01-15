@@ -1,8 +1,15 @@
 # mortgage-rate-app
 
-Commerce Bank Mortgage Rate Form Filler
+Commerce Bank Mortgage Rate Monitor with Scheduled Alerts
 
-A Node.js CLI tool that automatically fills out the Commerce Bank mortgage rates form and extracts the resulting rate information.
+Automatically checks Commerce Bank mortgage rates 4 times daily and sends email alerts when rates drop below your target threshold.
+
+## Features
+
+- Scheduled rate checks at 7am, 10am, 1pm, 4pm CT
+- Email alerts via SendGrid when rate drops below threshold
+- Rate history logging in JSON format
+- Debug mode with visible browser for troubleshooting
 
 ## Setup
 
@@ -10,45 +17,86 @@ A Node.js CLI tool that automatically fills out the Commerce Bank mortgage rates
 # Install dependencies
 npm install
 
-# Install Playwright browser (Chromium)
+# Install Playwright browser
 npx playwright install chromium
-```
-
-## Usage
-
-```bash
-# Run the script
-npm start
-
-# Run in debug mode (opens visible browser window)
-npm run debug
 ```
 
 ## Configuration
 
-Edit the `FORM_VALUES` object in `index.js` to set your desired values:
+### Environment Variables
 
-```javascript
-const FORM_VALUES = {
-  loanPurpose: 'Purchase',       // Purchase, Refinance
-  propertyType: 'Single Family', // Single Family, Condo, Multi-Family, etc.
-  propertyUse: 'Primary',        // Primary, Secondary, Investment
-  zipCode: '64108',              // ZIP code
-  purchasePrice: '400000',       // Purchase price in dollars
-  downPayment: '80000',          // Down payment amount
-  creditScore: '740'             // Credit score
-};
+Create a `.env` file or set these environment variables:
+
+```bash
+# SendGrid API Key (required for email alerts)
+SENDGRID_API_KEY=SG.xxxxxxxxxxxx
+
+# Email addresses
+FROM_EMAIL=alerts@yourdomain.com
+TO_EMAIL=you@example.com
+
+# Optional: Custom Chrome path
+CHROME_PATH=/path/to/chrome
 ```
 
-## Environment Variables
+### config.js Settings
 
-- `CHROME_PATH`: Custom path to Chrome/Chromium executable (optional)
+Edit `config.js` to customize:
 
-## How It Works
+- **formValues**: Loan details (purchase price, down payment, ZIP, credit score)
+- **alerts.interestRateThreshold**: Alert when rate drops below this (default: 5.625%)
+- **schedule.times**: Check times in 24h format (default: 7am, 10am, 1pm, 4pm CT)
 
-1. Launches a headless Chromium browser
-2. Navigates to the Commerce Bank mortgage rates page
-3. Discovers and logs all form elements on the page
-4. Fills in the form with the configured values
-5. Submits the form
-6. Extracts and displays the resulting rate table data
+## Usage
+
+### Run Scheduler (Recommended)
+
+Start the scheduler to automatically check rates at configured times:
+
+```bash
+npm run scheduler
+```
+
+Add `--run-now` to also run an immediate check on startup:
+
+```bash
+node scheduler.js --run-now
+```
+
+### Single Check
+
+Run a one-time rate check:
+
+```bash
+npm start
+```
+
+### Debug Mode
+
+Run with visible browser window for troubleshooting:
+
+```bash
+npm run debug
+```
+
+## Files
+
+- `index.js` - Main rate checking logic
+- `scheduler.js` - Cron-based scheduler for 4x daily checks
+- `config.js` - All configuration settings
+- `logger.js` - Rate history logging
+- `alerter.js` - SendGrid email alerts
+- `rate-history.json` - Logged rate history (auto-created)
+
+## Running as a Service
+
+To keep the scheduler running persistently, use PM2:
+
+```bash
+npm install -g pm2
+pm2 start scheduler.js --name mortgage-rates
+pm2 save
+pm2 startup
+```
+
+Or use systemd on Linux servers.
