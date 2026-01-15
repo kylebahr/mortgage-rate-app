@@ -7,7 +7,7 @@ Automatically checks Commerce Bank mortgage rates 4 times daily and sends email 
 ## Features
 
 - Scheduled rate checks at 7am, 10am, 1pm, 4pm CT
-- Email alerts via SendGrid when rate drops below threshold
+- Email alerts via Gmail when rate drops below threshold
 - Rate history logging in JSON format
 - Debug mode with visible browser for troubleshooting
 
@@ -23,16 +23,24 @@ npx playwright install chromium
 
 ## Configuration
 
+### Gmail App Password Setup
+
+1. Go to your [Google Account](https://myaccount.google.com/)
+2. Navigate to **Security** > **2-Step Verification** (enable if not already)
+3. At the bottom, click **App passwords**
+4. Select "Mail" and "Other (custom name)", enter "Mortgage Rate Alert"
+5. Copy the 16-character password generated
+
 ### Environment Variables
 
 Create a `.env` file or set these environment variables:
 
 ```bash
-# SendGrid API Key (required for email alerts)
-SENDGRID_API_KEY=SG.xxxxxxxxxxxx
+# Gmail credentials
+GMAIL_USER=your.email@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx  # 16-char app password from above
 
-# Email addresses
-FROM_EMAIL=alerts@yourdomain.com
+# Recipient email (can be same as GMAIL_USER)
 TO_EMAIL=you@example.com
 
 # Optional: Custom Chrome path
@@ -85,7 +93,7 @@ npm run debug
 - `scheduler.js` - Cron-based scheduler for 4x daily checks
 - `config.js` - All configuration settings
 - `logger.js` - Rate history logging
-- `alerter.js` - SendGrid email alerts
+- `alerter.js` - Gmail email alerts
 - `rate-history.json` - Logged rate history (auto-created)
 
 ## Running as a Service

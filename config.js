@@ -27,11 +27,12 @@ export const config = {
     times: ['7:00', '10:00', '13:00', '16:00']
   },
 
-  // SendGrid email configuration
+  // Gmail SMTP configuration
+  // To get an App Password: Google Account > Security > 2-Step Verification > App passwords
   email: {
-    sendgridApiKey: process.env.SENDGRID_API_KEY || '',
-    fromEmail: process.env.FROM_EMAIL || 'alerts@example.com',
-    toEmail: process.env.TO_EMAIL || '',
+    gmailUser: process.env.GMAIL_USER || '',      // your.email@gmail.com
+    gmailAppPassword: process.env.GMAIL_APP_PASSWORD || '', // 16-char app password
+    toEmail: process.env.TO_EMAIL || '',          // recipient email
     fromName: 'Mortgage Rate Alert'
   },
 

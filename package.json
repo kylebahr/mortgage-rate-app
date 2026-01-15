@@ -11,8 +11,8 @@
     "install-browser": "npx playwright install chromium"
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.0",
     "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.0",
     "playwright": "^1.40.0"
   }
 }

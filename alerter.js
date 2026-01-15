@@ -1,9 +1,17 @@
-import sgMail from '@sendgrid/mail';
+import nodemailer from 'nodemailer';
 import { config } from './config.js';
 
-// Initialize SendGrid
-if (config.email.sendgridApiKey) {
-  sgMail.setApiKey(config.email.sendgridApiKey);
+// Create Gmail transporter
+let transporter = null;
+
+if (config.email.gmailUser && config.email.gmailAppPassword) {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: config.email.gmailUser,
+      pass: config.email.gmailAppPassword
+    }
+  });
 }
 
 /**
@@ -17,8 +25,8 @@ export function shouldAlert(interestRate) {
  * Send email alert for low rate
  */
 export async function sendRateAlert(rateData) {
-  if (!config.email.sendgridApiKey) {
-    console.warn('SendGrid API key not configured. Skipping email alert.');
+  if (!transporter) {
+    console.warn('Gmail not configured. Skipping email alert.');
     console.log('Would have sent alert:', rateData);
     return false;
   }
@@ -28,26 +36,20 @@ export async function sendRateAlert(rateData) {
     return false;
   }
 
-  const msg = {
+  const mailOptions = {
+    from: `"${config.email.fromName}" <${config.email.gmailUser}>`,
     to: config.email.toEmail,
-    from: {
-      email: config.email.fromEmail,
-      name: config.email.fromName
-    },
     subject: `🏠 Mortgage Rate Alert: ${rateData.interestRate}% (Below ${config.alerts.interestRateThreshold}%)`,
     text: buildTextEmail(rateData),
     html: buildHtmlEmail(rateData)
   };
 
   try {
-    await sgMail.send(msg);
+    await transporter.sendMail(mailOptions);
     console.log(`Alert email sent to ${config.email.toEmail}`);
     return true;
   } catch (error) {
     console.error('Error sending email:', error.message);
-    if (error.response) {
-      console.error('SendGrid response:', error.response.body);
-    }
     return false;
   }
 }
