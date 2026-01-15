@@ -1,0 +1,15 @@
+{
+  "name": "mortgage-rate-app",
+  "version": "1.0.0",
+  "description": "Commerce Bank Mortgage Rate Form Filler",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "debug": "node index.js --debug",
+    "install-browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}
