@@ -8,35 +8,19 @@ function delay(ms) {
 }
 
 /**
- * Extract interest rate from results table
- * This function will need adjustment based on actual page structure
+ * Extract interest rate from results
  */
-function parseRateFromTable(tableData) {
-  // Look for interest rate pattern (e.g., "6.500%", "5.625%")
+function parseRate(text) {
   const ratePattern = /(\d+\.\d{1,3})%/;
-
-  for (const table of tableData) {
-    for (const row of table.rows) {
-      for (const cell of row) {
-        if (cell) {
-          const match = cell.match(ratePattern);
-          if (match) {
-            return {
-              interestRate: parseFloat(match[1]),
-              rawData: row
-            };
-          }
-        }
-      }
-    }
+  const match = text.match(ratePattern);
+  if (match) {
+    return parseFloat(match[1]);
   }
-
   return null;
 }
 
 /**
  * Main function to check mortgage rates
- * Can be called directly or by the scheduler
  */
 export async function checkRates() {
   const isDebug = process.argv.includes('--debug');
@@ -75,12 +59,53 @@ export async function checkRates() {
       timeout: 60000
     });
 
-    await delay(3000);
+    // Wait for page to fully load
+    await delay(5000);
 
-    // Discover form elements
-    console.log('\n--- Discovering page structure ---');
+    // Look for iframes
+    console.log('\n--- Looking for rate form ---');
 
-    const formElements = await page.evaluate(() => {
+    const iframeInfo = await page.evaluate(() => {
+      const iframes = document.querySelectorAll('iframe');
+      return Array.from(iframes).map(f => ({
+        id: f.id,
+        name: f.name,
+        src: f.src,
+        title: f.title
+      }));
+    });
+
+    console.log(`Found ${iframeInfo.length} iframes`);
+    if (iframeInfo.length > 0) {
+      console.log('Iframes:', JSON.stringify(iframeInfo, null, 2));
+    }
+
+    // Try to find the rate form - could be in iframe or main page
+    let formContext = page;
+    let foundForm = false;
+
+    // First check if form is in an iframe
+    for (const frame of page.frames()) {
+      const frameUrl = frame.url();
+      console.log(`Checking frame: ${frameUrl}`);
+
+      // Look for form elements in this frame
+      const hasForm = await frame.evaluate(() => {
+        const selects = document.querySelectorAll('select');
+        const inputs = document.querySelectorAll('input[type="text"], input[type="number"]');
+        return selects.length > 2 || inputs.length > 2;
+      }).catch(() => false);
+
+      if (hasForm) {
+        console.log(`Found form in frame: ${frameUrl}`);
+        formContext = frame;
+        foundForm = true;
+        break;
+      }
+    }
+
+    // Log what we found in the form context
+    const formElements = await formContext.evaluate(() => {
       const elements = { selects: [], inputs: [], buttons: [] };
 
       document.querySelectorAll('select').forEach(el => {
@@ -88,213 +113,205 @@ export async function checkRates() {
           value: opt.value,
           text: opt.text
         }));
-        elements.selects.push({ id: el.id, name: el.name, options });
+        elements.selects.push({
+          id: el.id,
+          name: el.name,
+          className: el.className,
+          options: options.slice(0, 5) // First 5 options
+        });
       });
 
       document.querySelectorAll('input').forEach(el => {
-        elements.inputs.push({
-          id: el.id,
-          name: el.name,
-          type: el.type,
-          placeholder: el.placeholder
-        });
+        if (el.type !== 'hidden') {
+          elements.inputs.push({
+            id: el.id,
+            name: el.name,
+            type: el.type,
+            placeholder: el.placeholder,
+            className: el.className
+          });
+        }
       });
 
       document.querySelectorAll('button, input[type="submit"]').forEach(el => {
-        elements.buttons.push({
-          id: el.id,
-          type: el.type,
-          text: el.textContent?.trim()
-        });
+        const text = el.textContent?.trim() || el.value;
+        if (text && !text.toLowerCase().includes('log in') && !text.toLowerCase().includes('sign in')) {
+          elements.buttons.push({
+            id: el.id,
+            type: el.type,
+            text: text,
+            className: el.className
+          });
+        }
       });
 
       return elements;
-    });
+    }).catch(() => ({ selects: [], inputs: [], buttons: [] }));
 
-    if (isDebug) {
-      console.log('Form elements:', JSON.stringify(formElements, null, 2));
-    }
-
-    // Check for iframes
-    const iframes = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('iframe')).map(iframe => ({
-        id: iframe.id,
-        name: iframe.name,
-        src: iframe.src
-      }));
-    });
-
-    if (iframes.length > 0 && isDebug) {
-      console.log('Iframes found:', JSON.stringify(iframes, null, 2));
-    }
+    console.log('\nForm elements found:');
+    console.log('Selects:', JSON.stringify(formElements.selects, null, 2));
+    console.log('Inputs:', JSON.stringify(formElements.inputs, null, 2));
+    console.log('Buttons:', JSON.stringify(formElements.buttons, null, 2));
 
     // Fill form
     console.log('\n--- Filling form ---');
 
-    const fillAttempts = [
-      { selector: '[name*="purpose"], [id*="purpose"], select[name*="loan"]', value: formValues.loanPurpose, type: 'select' },
-      { selector: '[name*="property"][name*="type"], [id*="propertyType"]', value: formValues.propertyType, type: 'select' },
-      { selector: '[name*="propertyUse"], [id*="propertyUse"]', value: formValues.propertyUse, type: 'select' },
-      { selector: '[name*="occupancy"], [id*="occupancy"]', value: formValues.occupancy, type: 'select' },
-      { selector: '[name*="military"], [name*="veteran"], [id*="military"], [id*="veteran"]', value: formValues.militaryVeteran, type: 'select' },
-      { selector: '[name*="zip"], [id*="zip"], input[placeholder*="ZIP"]', value: formValues.zipCode, type: 'input' },
-      { selector: '[name*="price"], [name*="purchase"], [id*="purchasePrice"], [name*="loan"][name*="amount"]', value: formValues.purchasePrice, type: 'input' },
-      { selector: '[name*="down"], [id*="downPayment"]', value: formValues.downPayment, type: 'input' },
-      { selector: '[name*="credit"], [name*="fico"], [id*="creditScore"]', value: formValues.creditScore, type: 'select' }
+    // Try to fill each field by various selectors
+    const fieldMappings = [
+      { field: 'loanPurpose', value: formValues.loanPurpose, keywords: ['purpose', 'loan'] },
+      { field: 'propertyType', value: formValues.propertyType, keywords: ['property', 'type'] },
+      { field: 'propertyUse', value: formValues.propertyUse, keywords: ['use', 'residence'] },
+      { field: 'occupancy', value: formValues.occupancy, keywords: ['occupancy'] },
+      { field: 'militaryVeteran', value: formValues.militaryVeteran, keywords: ['military', 'veteran', 'va'] },
+      { field: 'zipCode', value: formValues.zipCode, keywords: ['zip', 'postal'] },
+      { field: 'purchasePrice', value: formValues.purchasePrice, keywords: ['price', 'purchase', 'home'] },
+      { field: 'downPayment', value: formValues.downPayment, keywords: ['down', 'payment'] },
+      { field: 'creditScore', value: formValues.creditScore, keywords: ['credit', 'fico', 'score'] }
     ];
 
-    for (const attempt of fillAttempts) {
-      try {
-        const element = await page.$(attempt.selector);
-        if (element) {
-          if (attempt.type === 'select') {
-            await page.selectOption(attempt.selector, { label: attempt.value }).catch(() =>
-              page.selectOption(attempt.selector, attempt.value)
+    for (const mapping of fieldMappings) {
+      // Find matching element
+      for (const select of formElements.selects) {
+        const idName = (select.id + select.name + select.className).toLowerCase();
+        if (mapping.keywords.some(k => idName.includes(k))) {
+          try {
+            const selector = select.id ? `#${select.id}` : `select[name="${select.name}"]`;
+            await formContext.selectOption(selector, { label: mapping.value }).catch(() =>
+              formContext.selectOption(selector, mapping.value)
             );
-            console.log(`  Filled: ${attempt.selector.split(',')[0]}...`);
-          } else {
-            await element.fill(attempt.value);
-            console.log(`  Filled: ${attempt.selector.split(',')[0]}...`);
+            console.log(`  Filled ${mapping.field}: ${mapping.value}`);
+          } catch (e) {
+            console.log(`  Could not fill ${mapping.field}: ${e.message}`);
           }
-        }
-      } catch (e) {
-        // Selector didn't match
-      }
-    }
-
-    // Submit form
-    const submitSelectors = [
-      'button[type="submit"]',
-      'input[type="submit"]',
-      'button:has-text("Submit")',
-      'button:has-text("Get Rates")',
-      'button:has-text("View Rates")',
-      'button:has-text("Calculate")',
-      '.submit-button',
-      '#submit'
-    ];
-
-    let submitted = false;
-    for (const selector of submitSelectors) {
-      try {
-        const button = await page.$(selector);
-        if (button) {
-          const buttonText = await button.textContent();
-          console.log(`\nSubmitting form via: "${buttonText?.trim()}"`);
-          await button.click();
-          await delay(5000);
-          submitted = true;
           break;
         }
-      } catch (e) {
-        // Continue
+      }
+
+      for (const input of formElements.inputs) {
+        const idName = (input.id + input.name + input.placeholder + input.className).toLowerCase();
+        if (mapping.keywords.some(k => idName.includes(k))) {
+          try {
+            const selector = input.id ? `#${input.id}` : `input[name="${input.name}"]`;
+            await formContext.fill(selector, mapping.value);
+            console.log(`  Filled ${mapping.field}: ${mapping.value}`);
+          } catch (e) {
+            console.log(`  Could not fill ${mapping.field}: ${e.message}`);
+          }
+          break;
+        }
       }
     }
+
+    // Find and click submit button (not Log In)
+    console.log('\n--- Submitting form ---');
+
+    let submitted = false;
+    const submitKeywords = ['submit', 'get rate', 'view rate', 'calculate', 'search', 'find'];
+
+    for (const btn of formElements.buttons) {
+      const btnText = (btn.text || '').toLowerCase();
+      if (submitKeywords.some(k => btnText.includes(k))) {
+        try {
+          const selector = btn.id ? `#${btn.id}` : `button:has-text("${btn.text}")`;
+          await formContext.click(selector);
+          console.log(`Clicked: "${btn.text}"`);
+          submitted = true;
+          break;
+        } catch (e) {
+          console.log(`Could not click "${btn.text}": ${e.message}`);
+        }
+      }
+    }
+
+    if (!submitted) {
+      // Try generic submit button
+      try {
+        await formContext.click('button[type="submit"]');
+        console.log('Clicked generic submit button');
+        submitted = true;
+      } catch (e) {
+        console.log('No submit button found');
+      }
+    }
+
+    // Wait for results
+    await delay(5000);
 
     // Extract results
     console.log('\n--- Extracting results ---');
 
-    const tableData = await page.evaluate(() => {
-      const tables = document.querySelectorAll('table');
+    // Get all text content and look for rate patterns
+    const pageText = await formContext.evaluate(() => document.body.innerText).catch(() => '');
+
+    // Look for rate patterns like "6.500%" or "Rate: 6.5%"
+    const rateMatches = pageText.match(/\d+\.\d{1,3}%/g) || [];
+    console.log('Rate patterns found:', rateMatches.slice(0, 10));
+
+    // Try to find rates in specific elements
+    const rateData = await formContext.evaluate(() => {
       const results = [];
 
-      tables.forEach((table, tableIndex) => {
-        const rows = table.querySelectorAll('tr');
-        const tableRows = [];
+      // Look for elements containing rate info
+      const rateSelectors = [
+        '[class*="rate"]', '[class*="Rate"]',
+        '[class*="apr"]', '[class*="APR"]',
+        '[class*="result"]', '[class*="Result"]',
+        'td', 'th', '.rate', '#rate'
+      ];
 
-        rows.forEach(row => {
-          const cells = row.querySelectorAll('td, th');
-          const rowData = Array.from(cells).map(cell => cell.textContent?.trim());
-          if (rowData.length > 0) {
-            tableRows.push(rowData);
+      for (const selector of rateSelectors) {
+        document.querySelectorAll(selector).forEach(el => {
+          const text = el.textContent?.trim();
+          if (text && /\d+\.\d{1,3}%/.test(text) && text.length < 100) {
+            results.push(text);
           }
         });
-
-        if (tableRows.length > 0) {
-          results.push({ tableIndex, rows: tableRows });
-        }
-      });
-
-      return results;
-    });
-
-    let rateData = null;
-
-    if (tableData.length > 0) {
-      console.log('Table data found');
-      if (isDebug) {
-        console.log(JSON.stringify(tableData, null, 2));
       }
 
-      // Parse rate from table
-      const parsed = parseRateFromTable(tableData);
-      if (parsed) {
-        rateData = {
-          interestRate: parsed.interestRate,
-          rawRow: parsed.rawData,
-          tableData: tableData
-        };
-      }
-    } else {
-      // Try finding rate in other elements
-      const rateInfo = await page.evaluate(() => {
-        const rateElements = document.querySelectorAll('[class*="rate"], [class*="Rate"], [class*="apr"], [class*="APR"]');
-        return Array.from(rateElements).map(el => el.textContent?.trim()).filter(Boolean);
-      });
+      return [...new Set(results)]; // Remove duplicates
+    }).catch(() => []);
 
-      if (rateInfo.length > 0) {
-        console.log('Rate elements found:', rateInfo.slice(0, 5));
-        // Try to extract rate
-        const ratePattern = /(\d+\.\d{1,3})%/;
-        for (const text of rateInfo) {
-          const match = text.match(ratePattern);
-          if (match) {
-            rateData = {
-              interestRate: parseFloat(match[1]),
-              rawText: text
-            };
-            break;
-          }
-        }
+    console.log('Rate elements found:', rateData.slice(0, 10));
+
+    // Parse the first valid rate
+    let interestRate = null;
+    for (const text of [...rateData, ...rateMatches]) {
+      const rate = parseRate(text);
+      if (rate && rate > 0 && rate < 20) { // Reasonable mortgage rate range
+        interestRate = rate;
+        console.log(`\n✓ Interest Rate Found: ${interestRate}%`);
+        break;
       }
     }
 
-    // Take screenshot in debug mode
+    // Take screenshot
     if (isDebug) {
       await page.screenshot({ path: 'page-screenshot.png', fullPage: true });
       console.log('\nScreenshot saved to page-screenshot.png');
     }
 
     // Process rate data
-    if (rateData) {
-      console.log(`\n✓ Interest Rate Found: ${rateData.interestRate}%`);
-
+    if (interestRate) {
       // Log the rate
       const logEntry = logRate({
-        interestRate: rateData.interestRate,
-        formValues: formValues,
-        raw: rateData.rawRow || rateData.rawText
+        interestRate: interestRate,
+        formValues: formValues
       });
 
       // Check if alert should be sent
-      if (shouldAlert(rateData.interestRate)) {
-        console.log(`\n🔔 ALERT: Rate ${rateData.interestRate}% is below threshold ${config.alerts.interestRateThreshold}%`);
+      if (shouldAlert(interestRate)) {
+        console.log(`\n🔔 ALERT: Rate ${interestRate}% is below threshold ${config.alerts.interestRateThreshold}%`);
 
         await sendRateAlert({
-          interestRate: rateData.interestRate,
+          interestRate: interestRate,
           timestamp: logEntry.timestamp,
-          loanType: '30-Year Fixed' // Adjust based on actual form selection
+          loanType: '30-Year Fixed'
         });
       } else {
-        console.log(`\n○ Rate ${rateData.interestRate}% is above threshold ${config.alerts.interestRateThreshold}% - no alert`);
+        console.log(`\n○ Rate ${interestRate}% is above threshold ${config.alerts.interestRateThreshold}% - no alert`);
       }
 
-      // Check for rate change
-      if (config.alerts.alertOnAnyChange && hasRateChanged(rateData.interestRate)) {
-        console.log('Rate has changed from previous check');
-      }
-
-      return { success: true, rate: rateData.interestRate };
+      return { success: true, rate: interestRate };
     } else {
       console.log('\n✗ Could not extract interest rate from page');
       return { success: false, error: 'Could not extract rate' };
