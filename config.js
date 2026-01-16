@@ -9,8 +9,8 @@ export const config = {
     occupancy: 'Primary Residence',  // Primary Residence, Secondary Home, Investment Property
     militaryVeteran: 'No',           // Yes, No
     zipCode: '64108',
-    purchasePrice: '400000',
-    downPayment: '80000',
+    purchasePrice: '765900',
+    downPayment: '306000',
     creditScore: '740'
   },
 
