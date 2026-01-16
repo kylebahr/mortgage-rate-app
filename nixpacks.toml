@@ -1,0 +1,30 @@
+[phases.setup]
+nixPkgs = [
+  "nodejs_20",
+  "chromium",
+  "libnss",
+  "libatk",
+  "cups",
+  "libdrm",
+  "libxkbcommon",
+  "libatspi",
+  "libxcomposite",
+  "libxdamage",
+  "libxrandr",
+  "mesa",
+  "alsa-lib",
+  "pango",
+  "cairo"
+]
+
+[phases.install]
+cmds = [
+  "npm install",
+  "npx playwright install chromium"
+]
+
+[start]
+cmd = "node scheduler.js --run-now"
+
+[variables]
+PLAYWRIGHT_BROWSERS_PATH = "/app/.cache/ms-playwright"
