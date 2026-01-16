@@ -44,6 +44,6 @@ export const config = {
     maxEntries: 1000 // Keep last 1000 entries
   },
 
-  // Target URL
-  targetUrl: 'https://www.commercebank.com/personal/borrow/mortgages/mortgage-rates'
+  // Target URL - direct OptimalBlue form
+  targetUrl: 'https://quickquote-consumer.optimalblue.com/?mobile=true&clientId=3737323636&userId=373531313737&formId=35353431&embedded=true'
 };

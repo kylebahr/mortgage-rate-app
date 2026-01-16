@@ -62,38 +62,9 @@ export async function checkRates() {
     // Wait for page to fully load
     await delay(5000);
 
-    // Look for the OptimalBlue iframe specifically
-    console.log('\n--- Looking for rate form ---');
-
-    // Wait for the OptimalBlue iframe to load
-    let formContext = null;
-
-    // Find the OptimalBlue iframe by ID or URL
-    for (const frame of page.frames()) {
-      const frameUrl = frame.url();
-      if (frameUrl.includes('optimalblue') || frameUrl.includes('quickquote')) {
-        console.log(`Found OptimalBlue iframe: ${frameUrl}`);
-        formContext = frame;
-        break;
-      }
-    }
-
-    if (!formContext) {
-      // Try finding by frame name or looking for EoFrame
-      const frameHandle = await page.$('iframe#EoFrame');
-      if (frameHandle) {
-        formContext = await frameHandle.contentFrame();
-        console.log('Found EoFrame iframe');
-      }
-    }
-
-    if (!formContext) {
-      console.log('ERROR: Could not find OptimalBlue iframe');
-      return { success: false, error: 'OptimalBlue iframe not found' };
-    }
-
-    // Wait for iframe content to load
-    await delay(3000);
+    // Use page directly (going to OptimalBlue URL)
+    const formContext = page;
+    console.log('\n--- Form loaded ---');
 
     // Log what we found in the form context
     const formElements = await formContext.evaluate(() => {
