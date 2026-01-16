@@ -1,7 +1,7 @@
 // Mortgage Rate Tracker - Background Service Worker
 
 const CONFIG = {
-  targetUrl: 'https://www.commercebank.com/personal/borrow/mortgage-checks',
+  targetUrl: 'https://www.commercebank.com/personal/borrow/mortgages/mortgage-rates',
   alertThreshold: 5.625,
   alertEmail: 'kylebahr88@gmail.com',
   // Schedule: 8am, 10am, 1pm, 4pm CT
