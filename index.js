@@ -240,48 +240,63 @@ export async function checkRates() {
     // Extract results
     console.log('\n--- Extracting results ---');
 
-    // Get all text content and look for rate patterns
-    const pageText = await formContext.evaluate(() => document.body.innerText).catch(() => '');
-
-    // Look for rate patterns like "6.500%" or "Rate: 6.5%"
-    const rateMatches = pageText.match(/\d+\.\d{1,3}%/g) || [];
-    console.log('Rate patterns found:', rateMatches.slice(0, 10));
-
-    // Try to find rates in specific elements
+    // Look for the no-points rate in Conforming 30 Year Fixed section
     const rateData = await formContext.evaluate(() => {
-      const results = [];
+      const results = {
+        allRates: [],
+        noPointsRate: null,
+        tableRows: []
+      };
 
-      // Look for elements containing rate info
-      const rateSelectors = [
-        '[class*="rate"]', '[class*="Rate"]',
-        '[class*="apr"]', '[class*="APR"]',
-        '[class*="result"]', '[class*="Result"]',
-        'td', 'th', '.rate', '#rate'
-      ];
+      // Find all table rows
+      const rows = document.querySelectorAll('tr');
+      rows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll('td, th')).map(c => c.textContent?.trim());
+        if (cells.length > 0) {
+          results.tableRows.push(cells);
 
-      for (const selector of rateSelectors) {
-        document.querySelectorAll(selector).forEach(el => {
-          const text = el.textContent?.trim();
-          if (text && /\d+\.\d{1,3}%/.test(text) && text.length < 100) {
-            results.push(text);
+          // Look for row with "0.000" or "0" in discount points column (usually 4th column)
+          // and extract the rate (usually 3rd column)
+          const rowText = cells.join(' ');
+
+          // Check if this is a data row with a rate
+          const hasRate = cells.some(c => /^\d+\.\d{2,3}%$/.test(c));
+          const hasZeroPoints = cells.some(c => c === '0.000' || c === '0' || c === '0.00');
+
+          if (hasRate && hasZeroPoints) {
+            // Find the rate value (format: X.XXX%)
+            for (const cell of cells) {
+              if (/^\d+\.\d{2,3}%$/.test(cell)) {
+                results.noPointsRate = cell;
+                break;
+              }
+            }
           }
-        });
-      }
 
-      return [...new Set(results)]; // Remove duplicates
-    }).catch(() => []);
+          // Also collect all rates found
+          cells.forEach(cell => {
+            if (/^\d+\.\d{2,3}%$/.test(cell)) {
+              results.allRates.push(cell);
+            }
+          });
+        }
+      });
 
-    console.log('Rate elements found:', rateData.slice(0, 10));
+      return results;
+    }).catch(() => ({ allRates: [], noPointsRate: null, tableRows: [] }));
 
-    // Parse the first valid rate
+    console.log('Table rows found:', rateData.tableRows.length);
+    console.log('All rates found:', rateData.allRates);
+    console.log('No-points rate:', rateData.noPointsRate);
+
+    // Use the no-points rate, or fall back to first rate found
     let interestRate = null;
-    for (const text of [...rateData, ...rateMatches]) {
-      const rate = parseRate(text);
-      if (rate && rate > 0 && rate < 20) { // Reasonable mortgage rate range
-        interestRate = rate;
-        console.log(`\n✓ Interest Rate Found: ${interestRate}%`);
-        break;
-      }
+    if (rateData.noPointsRate) {
+      interestRate = parseRate(rateData.noPointsRate);
+      console.log(`\n✓ No-Points Rate Found: ${interestRate}%`);
+    } else if (rateData.allRates.length > 0) {
+      interestRate = parseRate(rateData.allRates[0]);
+      console.log(`\n✓ Interest Rate Found (fallback): ${interestRate}%`);
     }
 
     // Take screenshot
