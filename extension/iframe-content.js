@@ -150,10 +150,21 @@ async function fillForm() {
     } else if (identifier.includes('down')) {
       valueToSet = FORM_VALUES.downPayment;
     } else if (identifier.includes('zip') || identifier.includes('postal')) {
+      // Skip ZIP if already filled (often pre-filled based on state)
+      if (input.value && input.value.length >= 5) {
+        console.log(`[MortgageTracker-Iframe] Skipping ZIP - already filled: ${input.value}`);
+        continue;
+      }
       valueToSet = FORM_VALUES.zipCode;
     }
 
     if (valueToSet) {
+      // Skip if already has the correct value
+      if (input.value === valueToSet) {
+        console.log(`[MortgageTracker-Iframe] Skipping ${identifier} - already set to "${input.value}"`);
+        continue;
+      }
+
       input.focus();
       input.value = valueToSet;
       input.dispatchEvent(new Event('input', { bubbles: true }));
