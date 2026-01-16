@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Mortgage Rate Tracker",
+  "version": "1.0",
+  "description": "Tracks Commerce Bank mortgage rates and alerts when below threshold",
+  "permissions": [
+    "alarms",
+    "storage",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.commercebank.com/*",
+    "https://quickquote-consumer.optimalblue.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Mortgage Rate Tracker"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.commercebank.com/personal/borrow/mortgage-checks*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
