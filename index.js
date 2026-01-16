@@ -62,47 +62,38 @@ export async function checkRates() {
     // Wait for page to fully load
     await delay(5000);
 
-    // Look for iframes
+    // Look for the OptimalBlue iframe specifically
     console.log('\n--- Looking for rate form ---');
 
-    const iframeInfo = await page.evaluate(() => {
-      const iframes = document.querySelectorAll('iframe');
-      return Array.from(iframes).map(f => ({
-        id: f.id,
-        name: f.name,
-        src: f.src,
-        title: f.title
-      }));
-    });
+    // Wait for the OptimalBlue iframe to load
+    let formContext = null;
 
-    console.log(`Found ${iframeInfo.length} iframes`);
-    if (iframeInfo.length > 0) {
-      console.log('Iframes:', JSON.stringify(iframeInfo, null, 2));
-    }
-
-    // Try to find the rate form - could be in iframe or main page
-    let formContext = page;
-    let foundForm = false;
-
-    // First check if form is in an iframe
+    // Find the OptimalBlue iframe by ID or URL
     for (const frame of page.frames()) {
       const frameUrl = frame.url();
-      console.log(`Checking frame: ${frameUrl}`);
-
-      // Look for form elements in this frame
-      const hasForm = await frame.evaluate(() => {
-        const selects = document.querySelectorAll('select');
-        const inputs = document.querySelectorAll('input[type="text"], input[type="number"]');
-        return selects.length > 2 || inputs.length > 2;
-      }).catch(() => false);
-
-      if (hasForm) {
-        console.log(`Found form in frame: ${frameUrl}`);
+      if (frameUrl.includes('optimalblue') || frameUrl.includes('quickquote')) {
+        console.log(`Found OptimalBlue iframe: ${frameUrl}`);
         formContext = frame;
-        foundForm = true;
         break;
       }
     }
+
+    if (!formContext) {
+      // Try finding by frame name or looking for EoFrame
+      const frameHandle = await page.$('iframe#EoFrame');
+      if (frameHandle) {
+        formContext = await frameHandle.contentFrame();
+        console.log('Found EoFrame iframe');
+      }
+    }
+
+    if (!formContext) {
+      console.log('ERROR: Could not find OptimalBlue iframe');
+      return { success: false, error: 'OptimalBlue iframe not found' };
+    }
+
+    // Wait for iframe content to load
+    await delay(3000);
 
     // Log what we found in the form context
     const formElements = await formContext.evaluate(() => {
