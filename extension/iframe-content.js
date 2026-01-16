@@ -110,7 +110,9 @@ async function fillForm() {
     } else if (identifier.includes('purpose') || (identifier.includes('loan') && !identifier.includes('amount'))) {
       valueToSet = FORM_VALUES.loanPurpose;
     } else if (identifier.includes('state') && !identifier.includes('estate')) {
-      valueToSet = FORM_VALUES.state;
+      // Skip state field - it's pre-filled correctly
+      console.log(`[MortgageTracker-Iframe] Skipping state field (pre-filled)`);
+      continue;
     } else if (identifier.includes('credit') || identifier.includes('score') || identifier.includes('fico')) {
       valueToSet = FORM_VALUES.creditScore;
     } else if (identifier.includes('veteran') || identifier.includes('military') || identifier.includes('va')) {
@@ -118,6 +120,13 @@ async function fillForm() {
     }
 
     if (valueToSet) {
+      // Check if already set to correct value
+      const currentText = select.options[select.selectedIndex]?.text || '';
+      if (currentText.toLowerCase().includes(valueToSet.toLowerCase().split(' ')[0])) {
+        console.log(`[MortgageTracker-Iframe] Skipping ${identifier} - already set to "${currentText}"`);
+        continue;
+      }
+
       const success = setSelectValue(select, valueToSet);
       console.log(`[MortgageTracker-Iframe] Set ${identifier}: ${valueToSet} (${success ? 'success' : 'failed'})`);
       await delay(300);
