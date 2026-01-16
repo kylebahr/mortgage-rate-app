@@ -145,16 +145,18 @@ async function fillForm() {
 
     let valueToSet = null;
 
-    if (identifier.includes('price') || identifier.includes('purchase') || identifier.includes('home value')) {
+    // Log every input we see for debugging
+    console.log(`[MortgageTracker-Iframe] Input found: id="${input.id}" name="${input.name}" placeholder="${input.placeholder}" value="${input.value}"`);
+
+    if (identifier.includes('price') || identifier.includes('purchase') || identifier.includes('home value') || identifier.includes('saleprice') || identifier.includes('homeprice')) {
       valueToSet = FORM_VALUES.purchasePrice;
     } else if (identifier.includes('down')) {
       valueToSet = FORM_VALUES.downPayment;
-    } else if (identifier.includes('zip') || identifier.includes('postal')) {
-      // Skip ZIP if already filled (often pre-filled based on state)
-      if (input.value && input.value.length >= 5) {
-        console.log(`[MortgageTracker-Iframe] Skipping ZIP - already filled: ${input.value}`);
-        continue;
-      }
+    } else if (identifier.includes('zip') || identifier.includes('postal') || identifier.includes('zipcode')) {
+      valueToSet = FORM_VALUES.zipCode;
+    } else if (input.maxLength === 5 || input.maxLength === 10 || (input.type === 'text' && !input.value && identifier.includes('code'))) {
+      // Likely a ZIP field based on maxLength
+      console.log(`[MortgageTracker-Iframe] Possible ZIP field detected by maxLength: ${input.maxLength}`);
       valueToSet = FORM_VALUES.zipCode;
     }
 
