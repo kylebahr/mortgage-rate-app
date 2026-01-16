@@ -25,6 +25,12 @@
       "matches": ["https://www.commercebank.com/personal/borrow/mortgages/mortgage-rates*"],
       "js": ["content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://quickquote-consumer.optimalblue.com/*"],
+      "js": ["iframe-content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ]
 }
