@@ -133,8 +133,8 @@ async function fillForm() {
     }
   }
 
-  // Fill text inputs
-  const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])');
+  // Fill text inputs (including tel type for ZIP codes)
+  const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="tel"], input:not([type])');
   console.log(`[MortgageTracker-Iframe] Filling ${inputs.length} input elements`);
 
   for (const input of inputs) {
