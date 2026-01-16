@@ -48,12 +48,54 @@ export async function checkRates() {
   try {
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      viewport: { width: 1920, height: 1080 }
+      viewport: { width: 1920, height: 1080 },
+      locale: 'en-US',
+      timezoneId: 'America/Chicago'
     });
 
     const page = await context.newPage();
 
-    console.log(`Navigating to: ${config.targetUrl}`);
+    // Anti-detection: Override webdriver property and other headless indicators
+    await page.addInitScript(() => {
+      // Remove webdriver flag
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+
+      // Mock plugins
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5]
+      });
+
+      // Mock languages
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en']
+      });
+
+      // Remove automation indicators
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+
+      // Mock chrome object
+      window.chrome = {
+        runtime: {},
+        loadTimes: function() {},
+        csi: function() {},
+        app: {}
+      };
+    });
+
+    // First visit Commerce Bank to establish session/cookies
+    const commerceBankUrl = 'https://www.commercebank.com/personal/borrow/mortgage-checks';
+    console.log(`Visiting Commerce Bank first: ${commerceBankUrl}`);
+    await page.goto(commerceBankUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+    await delay(3000);
+    console.log('Commerce Bank page loaded');
+
+    // Now navigate to the OptimalBlue URL
+    console.log(`\nNavigating to: ${config.targetUrl}`);
     await page.goto(config.targetUrl, {
       waitUntil: 'networkidle',
       timeout: 60000
@@ -61,13 +103,13 @@ export async function checkRates() {
 
     // Wait for page to fully load - OptimalBlue uses dynamic JS rendering
     console.log('Waiting for page to render...');
-    await delay(3000);
+    await delay(5000);
 
     // Wait for form elements to appear (try multiple selectors)
-    const formSelectors = ['select', 'input[type="text"]', 'input[type="number"]', 'button'];
+    const formSelectors = ['select', 'input[type="text"]', 'input[type="number"]', 'button', '.form-control', '[class*="input"]', '[class*="select"]'];
     let foundElements = false;
 
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
       for (const selector of formSelectors) {
         try {
           const count = await page.locator(selector).count();
@@ -87,44 +129,16 @@ export async function checkRates() {
       await delay(2000);
     }
 
-    // Also check for any iframes that might contain the form
-    const iframes = await page.locator('iframe').count();
-    console.log(`Found ${iframes} iframes on page`);
+    // Get full page HTML to see what's actually there
+    const bodyHtml = await page.evaluate(() => document.body?.innerHTML || '').catch(() => '');
+    console.log('\nPage body HTML (first 2000 chars):');
+    console.log(bodyHtml.substring(0, 2000));
 
-    if (iframes > 0) {
-      // Try to access iframe content
-      const frames = page.frames();
-      console.log(`Page has ${frames.length} frames total`);
-      for (const frame of frames) {
-        const url = frame.url();
-        console.log(`Frame URL: ${url}`);
-      }
-    }
-
-    // Take debug screenshot to see what's on page
+    // Take debug screenshot
     await page.screenshot({ path: 'debug-screenshot.png', fullPage: true });
-    console.log('Debug screenshot saved to debug-screenshot.png');
+    console.log('\nDebug screenshot saved');
 
-    // Get page HTML structure for debugging
-    const pageInfo = await page.evaluate(() => {
-      return {
-        title: document.title,
-        bodyLength: document.body?.innerHTML?.length || 0,
-        hasForm: !!document.querySelector('form'),
-        allTagCounts: Array.from(document.querySelectorAll('*')).reduce((acc, el) => {
-          acc[el.tagName] = (acc[el.tagName] || 0) + 1;
-          return acc;
-        }, {})
-      };
-    }).catch(() => ({ title: 'Error', bodyLength: 0, hasForm: false, allTagCounts: {} }));
-
-    console.log('\nPage info:');
-    console.log('Title:', pageInfo.title);
-    console.log('Body HTML length:', pageInfo.bodyLength);
-    console.log('Has form element:', pageInfo.hasForm);
-    console.log('Element counts:', JSON.stringify(pageInfo.allTagCounts, null, 2));
-
-    // Use page directly (going to OptimalBlue URL)
+    // Use page directly
     const formContext = page;
     console.log('\n--- Form loaded ---');
 
