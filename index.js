@@ -158,15 +158,15 @@ export async function checkRates() {
 
     // Try to fill each field by various selectors
     const fieldMappings = [
-      { field: 'loanPurpose', value: formValues.loanPurpose, keywords: ['purpose', 'loan'] },
-      { field: 'propertyType', value: formValues.propertyType, keywords: ['property', 'type'] },
-      { field: 'propertyUse', value: formValues.propertyUse, keywords: ['use', 'residence'] },
       { field: 'occupancy', value: formValues.occupancy, keywords: ['occupancy'] },
-      { field: 'militaryVeteran', value: formValues.militaryVeteran, keywords: ['military', 'veteran', 'va'] },
-      { field: 'zipCode', value: formValues.zipCode, keywords: ['zip', 'postal'] },
-      { field: 'purchasePrice', value: formValues.purchasePrice, keywords: ['price', 'purchase', 'home'] },
+      { field: 'propertyType', value: formValues.propertyType, keywords: ['property', 'type'] },
+      { field: 'loanPurpose', value: formValues.loanPurpose, keywords: ['purpose', 'loan'] },
+      { field: 'purchasePrice', value: formValues.purchasePrice, keywords: ['price', 'purchase'] },
       { field: 'downPayment', value: formValues.downPayment, keywords: ['down', 'payment'] },
-      { field: 'creditScore', value: formValues.creditScore, keywords: ['credit', 'fico', 'score'] }
+      { field: 'state', value: formValues.state, keywords: ['state'] },
+      { field: 'zipCode', value: formValues.zipCode, keywords: ['zip'] },
+      { field: 'creditScore', value: formValues.creditScore, keywords: ['credit', 'score'] },
+      { field: 'militaryVeteran', value: formValues.militaryVeteran, keywords: ['military', 'veteran'] }
     ];
 
     for (const mapping of fieldMappings) {

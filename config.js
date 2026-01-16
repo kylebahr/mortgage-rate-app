@@ -3,15 +3,15 @@
 export const config = {
   // Form values to submit
   formValues: {
-    loanPurpose: 'Purchase',
-    propertyType: 'Single Family',
-    propertyUse: 'Primary',
-    occupancy: 'Primary Residence',  // Primary Residence, Secondary Home, Investment Property
-    militaryVeteran: 'No',           // Yes, No
-    zipCode: '64108',
+    occupancy: 'Primary Residence',    // Primary Residence, Secondary Home, Investment Property
+    propertyType: 'Single Family',     // Single Family, Condo, etc.
+    loanPurpose: 'Purchase',           // Purchase, Refinance
     purchasePrice: '765900',
     downPayment: '306000',
-    creditScore: '740'
+    state: 'Missouri (MO)',            // State dropdown
+    zipCode: '64108',
+    creditScore: '740',                // Credit score range
+    militaryVeteran: 'No'              // Yes, No
   },
 
   // Alert thresholds
