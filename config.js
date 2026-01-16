@@ -6,6 +6,8 @@ export const config = {
     loanPurpose: 'Purchase',
     propertyType: 'Single Family',
     propertyUse: 'Primary',
+    occupancy: 'Primary Residence',  // Primary Residence, Secondary Home, Investment Property
+    militaryVeteran: 'No',           // Yes, No
     zipCode: '64108',
     purchasePrice: '400000',
     downPayment: '80000',

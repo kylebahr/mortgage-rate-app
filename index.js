@@ -134,7 +134,9 @@ export async function checkRates() {
     const fillAttempts = [
       { selector: '[name*="purpose"], [id*="purpose"], select[name*="loan"]', value: formValues.loanPurpose, type: 'select' },
       { selector: '[name*="property"][name*="type"], [id*="propertyType"]', value: formValues.propertyType, type: 'select' },
-      { selector: '[name*="occupancy"], [name*="property"][name*="use"], [id*="propertyUse"]', value: formValues.propertyUse, type: 'select' },
+      { selector: '[name*="propertyUse"], [id*="propertyUse"]', value: formValues.propertyUse, type: 'select' },
+      { selector: '[name*="occupancy"], [id*="occupancy"]', value: formValues.occupancy, type: 'select' },
+      { selector: '[name*="military"], [name*="veteran"], [id*="military"], [id*="veteran"]', value: formValues.militaryVeteran, type: 'select' },
       { selector: '[name*="zip"], [id*="zip"], input[placeholder*="ZIP"]', value: formValues.zipCode, type: 'input' },
       { selector: '[name*="price"], [name*="purchase"], [id*="purchasePrice"], [name*="loan"][name*="amount"]', value: formValues.purchasePrice, type: 'input' },
       { selector: '[name*="down"], [id*="downPayment"]', value: formValues.downPayment, type: 'input' },
