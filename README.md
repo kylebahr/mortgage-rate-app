@@ -7,7 +7,7 @@ Automatically checks Commerce Bank mortgage rates 4 times daily and sends email 
 ## Features
 
 - Scheduled rate checks at 7am, 10am, 1pm, 4pm CT
-- Email alerts via Gmail when rate drops below threshold
+- Email alerts via Resend when rate drops below threshold
 - Rate history logging in JSON format
 - Debug mode with visible browser for troubleshooting
 
@@ -23,24 +23,22 @@ npx playwright install chromium
 
 ## Configuration
 
-### Gmail App Password Setup
+### Resend Setup (Free - 100 emails/day)
 
-1. Go to your [Google Account](https://myaccount.google.com/)
-2. Navigate to **Security** > **2-Step Verification** (enable if not already)
-3. At the bottom, click **App passwords**
-4. Select "Mail" and "Other (custom name)", enter "Mortgage Rate Alert"
-5. Copy the 16-character password generated
+1. Sign up at https://resend.com (no credit card required)
+2. Go to https://resend.com/api-keys
+3. Click "Create API Key", name it "Mortgage Rate Alert"
+4. Copy the API key (starts with `re_`)
 
 ### Environment Variables
 
 Create a `.env` file or set these environment variables:
 
 ```bash
-# Gmail credentials
-GMAIL_USER=your.email@gmail.com
-GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx  # 16-char app password from above
+# Resend API Key
+RESEND_API_KEY=re_xxxxxxxxx
 
-# Recipient email (can be same as GMAIL_USER)
+# Recipient email
 TO_EMAIL=you@example.com
 
 # Optional: Custom Chrome path
@@ -93,7 +91,7 @@ npm run debug
 - `scheduler.js` - Cron-based scheduler for 4x daily checks
 - `config.js` - All configuration settings
 - `logger.js` - Rate history logging
-- `alerter.js` - Gmail email alerts
+- `alerter.js` - Resend email alerts
 - `rate-history.json` - Logged rate history (auto-created)
 
 ## Running as a Service

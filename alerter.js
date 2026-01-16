@@ -1,17 +1,11 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { config } from './config.js';
 
-// Create Gmail transporter
-let transporter = null;
+// Create Resend client
+let resend = null;
 
-if (config.email.gmailUser && config.email.gmailAppPassword) {
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: config.email.gmailUser,
-      pass: config.email.gmailAppPassword
-    }
-  });
+if (config.email.resendApiKey) {
+  resend = new Resend(config.email.resendApiKey);
 }
 
 /**
@@ -25,8 +19,8 @@ export function shouldAlert(interestRate) {
  * Send email alert for low rate
  */
 export async function sendRateAlert(rateData) {
-  if (!transporter) {
-    console.warn('Gmail not configured. Skipping email alert.');
+  if (!resend) {
+    console.warn('Resend API key not configured. Skipping email alert.');
     console.log('Would have sent alert:', rateData);
     return false;
   }
@@ -36,17 +30,21 @@ export async function sendRateAlert(rateData) {
     return false;
   }
 
-  const mailOptions = {
-    from: `"${config.email.fromName}" <${config.email.gmailUser}>`,
-    to: config.email.toEmail,
-    subject: `🏠 Mortgage Rate Alert: ${rateData.interestRate}% (Below ${config.alerts.interestRateThreshold}%)`,
-    text: buildTextEmail(rateData),
-    html: buildHtmlEmail(rateData)
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Alert email sent to ${config.email.toEmail}`);
+    const { data, error } = await resend.emails.send({
+      from: `${config.email.fromName} <${config.email.fromEmail}>`,
+      to: [config.email.toEmail],
+      subject: `Mortgage Rate Alert: ${rateData.interestRate}% (Below ${config.alerts.interestRateThreshold}%)`,
+      text: buildTextEmail(rateData),
+      html: buildHtmlEmail(rateData)
+    });
+
+    if (error) {
+      console.error('Error sending email:', error.message);
+      return false;
+    }
+
+    console.log(`Alert email sent to ${config.email.toEmail} (id: ${data.id})`);
     return true;
   } catch (error) {
     console.error('Error sending email:', error.message);
@@ -102,7 +100,7 @@ function buildHtmlEmail(rateData) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🏠 Mortgage Rate Alert</h1>
+      <h1>Mortgage Rate Alert</h1>
     </div>
 
     <div class="rate-box">

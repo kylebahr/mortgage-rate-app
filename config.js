@@ -27,12 +27,12 @@ export const config = {
     times: ['7:00', '10:00', '13:00', '16:00']
   },
 
-  // Gmail SMTP configuration
-  // To get an App Password: Google Account > Security > 2-Step Verification > App passwords
+  // Resend email configuration
+  // Get your API key at: https://resend.com/api-keys
   email: {
-    gmailUser: process.env.GMAIL_USER || '',      // your.email@gmail.com
-    gmailAppPassword: process.env.GMAIL_APP_PASSWORD || '', // 16-char app password
-    toEmail: process.env.TO_EMAIL || '',          // recipient email
+    resendApiKey: process.env.RESEND_API_KEY || '',  // re_xxxxxxxxx
+    fromEmail: 'onboarding@resend.dev',               // Use this for free tier, or your verified domain
+    toEmail: process.env.TO_EMAIL || '',              // recipient email
     fromName: 'Mortgage Rate Alert'
   },
 
