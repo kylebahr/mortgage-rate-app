@@ -59,8 +59,70 @@ export async function checkRates() {
       timeout: 60000
     });
 
-    // Wait for page to fully load
-    await delay(5000);
+    // Wait for page to fully load - OptimalBlue uses dynamic JS rendering
+    console.log('Waiting for page to render...');
+    await delay(3000);
+
+    // Wait for form elements to appear (try multiple selectors)
+    const formSelectors = ['select', 'input[type="text"]', 'input[type="number"]', 'button'];
+    let foundElements = false;
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      for (const selector of formSelectors) {
+        try {
+          const count = await page.locator(selector).count();
+          if (count > 0) {
+            console.log(`Found ${count} elements matching "${selector}" on attempt ${attempt + 1}`);
+            foundElements = true;
+            break;
+          }
+        } catch (e) {
+          // Continue trying
+        }
+      }
+
+      if (foundElements) break;
+
+      console.log(`Attempt ${attempt + 1}: No form elements yet, waiting...`);
+      await delay(2000);
+    }
+
+    // Also check for any iframes that might contain the form
+    const iframes = await page.locator('iframe').count();
+    console.log(`Found ${iframes} iframes on page`);
+
+    if (iframes > 0) {
+      // Try to access iframe content
+      const frames = page.frames();
+      console.log(`Page has ${frames.length} frames total`);
+      for (const frame of frames) {
+        const url = frame.url();
+        console.log(`Frame URL: ${url}`);
+      }
+    }
+
+    // Take debug screenshot to see what's on page
+    await page.screenshot({ path: 'debug-screenshot.png', fullPage: true });
+    console.log('Debug screenshot saved to debug-screenshot.png');
+
+    // Get page HTML structure for debugging
+    const pageInfo = await page.evaluate(() => {
+      return {
+        title: document.title,
+        bodyLength: document.body?.innerHTML?.length || 0,
+        hasForm: !!document.querySelector('form'),
+        allTagCounts: Array.from(document.querySelectorAll('*')).reduce((acc, el) => {
+          acc[el.tagName] = (acc[el.tagName] || 0) + 1;
+          return acc;
+        }, {})
+      };
+    }).catch(() => ({ title: 'Error', bodyLength: 0, hasForm: false, allTagCounts: {} }));
+
+    console.log('\nPage info:');
+    console.log('Title:', pageInfo.title);
+    console.log('Body HTML length:', pageInfo.bodyLength);
+    console.log('Has form element:', pageInfo.hasForm);
+    console.log('Element counts:', JSON.stringify(pageInfo.allTagCounts, null, 2));
 
     // Use page directly (going to OptimalBlue URL)
     const formContext = page;
