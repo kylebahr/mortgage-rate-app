@@ -21,6 +21,7 @@
     "default_popup": "popup.html",
     "default_title": "Mortgage Rate Tracker"
   },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://www.commercebank.com/personal/borrow/mortgages/mortgage-rates*"],

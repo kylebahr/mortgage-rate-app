@@ -76,10 +76,12 @@ const server = http.createServer(async (req, res) => {
         const data = JSON.parse(body);
         console.log(`[API] Received rate data from extension: ${data.rate}%`);
 
-        // Forward to Google Sheets webhook
+        // Forward to Google Sheets webhook (pass through threshold and emails if provided)
         const result = await sendToWebhook({
           rate: data.rate,
-          loanType: data.loanType || '30-Year Fixed'
+          loanType: data.loanType || '30-Year Fixed',
+          threshold: data.threshold,  // From extension settings
+          emails: data.emails  // From extension settings
         });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });

@@ -8,6 +8,8 @@ import { config } from './config.js';
  * @param {Object} rateData - Rate information
  * @param {number} rateData.rate - Interest rate value
  * @param {string} rateData.loanType - Type of loan (e.g., "30-Year Fixed")
+ * @param {number} rateData.threshold - Optional threshold for alerts
+ * @param {Array} rateData.emails - Optional array of email recipients
  * @returns {Promise<Object>} Response from webhook
  */
 export async function sendToWebhook(rateData) {
@@ -27,7 +29,11 @@ export async function sendToWebhook(rateData) {
     const payload = {
       rate: rateData.rate,
       loanType: rateData.loanType || '30-Year Fixed',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Include threshold and emails if provided (from extension)
+      // Otherwise Google Apps Script will use its own defaults
+      threshold: rateData.threshold,
+      emails: rateData.emails
     };
 
     const controller = new AbortController();

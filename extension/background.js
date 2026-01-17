@@ -24,11 +24,26 @@ const CONFIG = {
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Mortgage Rate Tracker installed');
   setupAlarms();
-  // Store initial config
-  chrome.storage.local.set({
-    config: CONFIG,
-    rateHistory: [],
-    lastCheck: null
+
+  // Initialize default settings if not already set
+  chrome.storage.local.get(['alertThreshold', 'emailRecipients'], (result) => {
+    const settings = {
+      config: CONFIG,
+      rateHistory: [],
+      lastCheck: null
+    };
+
+    // Set default threshold if not exists
+    if (!result.alertThreshold) {
+      settings.alertThreshold = 5.625;
+    }
+
+    // Set default emails if not exists
+    if (!result.emailRecipients) {
+      settings.emailRecipients = ['kylebahr88@gmail.com', 'albbt2@gmail.com'];
+    }
+
+    chrome.storage.local.set(settings);
   });
 });
 
@@ -133,10 +148,18 @@ async function handleRateData(data, tabId) {
     loanType: data.loanType || '30-Year Fixed'
   };
 
-  // Get existing history
-  const storage = await chrome.storage.local.get(['rateHistory', 'config']);
+  // Get existing history and settings
+  const storage = await chrome.storage.local.get([
+    'rateHistory',
+    'config',
+    'alertThreshold',
+    'emailRecipients'
+  ]);
+
   const history = storage.rateHistory || [];
   const config = storage.config || CONFIG;
+  const threshold = storage.alertThreshold || 5.625;
+  const emails = storage.emailRecipients || ['kylebahr88@gmail.com', 'albbt2@gmail.com'];
 
   // Add new entry
   history.unshift(rateEntry);
@@ -154,13 +177,15 @@ async function handleRateData(data, tabId) {
   });
 
   console.log(`Rate logged: ${data.rate}% at ${timestamp}`);
+  console.log(`Using threshold: ${threshold}%, Recipients: ${emails.length}`);
 
   // Send to Railway API (which forwards to Google Sheets)
-  await sendToWebhook(rateEntry, config);
+  // Include threshold and emails so Google Apps Script can use them
+  await sendToWebhook(rateEntry, config, threshold, emails);
 
   // Check if alert should be sent
-  if (data.rate < config.alertThreshold) {
-    showNotification(data.rate, config.alertThreshold);
+  if (data.rate < threshold) {
+    showNotification(data.rate, threshold);
   }
 
   // Close the tab
@@ -172,7 +197,7 @@ async function handleRateData(data, tabId) {
 /**
  * Sends rate data to Railway API (which forwards to Google Sheets)
  */
-async function sendToWebhook(rateData, config) {
+async function sendToWebhook(rateData, config, threshold, emails) {
   const webhookConfig = config.webhook || CONFIG.webhook;
 
   if (!webhookConfig.enabled) {
@@ -191,7 +216,9 @@ async function sendToWebhook(rateData, config) {
     const payload = {
       rate: rateData.rate,
       loanType: rateData.loanType || '30-Year Fixed',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      threshold: threshold || 5.625,
+      emails: emails || ['kylebahr88@gmail.com', 'albbt2@gmail.com']
     };
 
     const controller = new AbortController();
