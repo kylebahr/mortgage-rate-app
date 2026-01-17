@@ -38,6 +38,14 @@ export const config = {
     fromName: 'Mortgage Rate Alert'
   },
 
+  // Google Apps Script webhook for Sheets logging and email alerts
+  // Deploy your Apps Script as a web app and paste the URL here
+  webhook: {
+    enabled: true,  // Set to false to disable webhook
+    url: process.env.WEBHOOK_URL || '',  // Your deployed Apps Script web app URL
+    timeout: 10000  // Request timeout in milliseconds
+  },
+
   // Logging
   logging: {
     logFile: 'rate-history.json',

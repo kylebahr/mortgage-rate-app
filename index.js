@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import { config } from './config.js';
 import { logRate, getLastRate, hasRateChanged } from './logger.js';
 import { shouldAlert, sendRateAlert } from './alerter.js';
+import { sendToWebhook } from './webhook.js';
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -349,6 +350,12 @@ export async function checkRates() {
       const logEntry = logRate({
         interestRate: interestRate,
         formValues: formValues
+      });
+
+      // Send to Google Apps Script webhook (for Sheets logging and email alerts)
+      await sendToWebhook({
+        rate: interestRate,
+        loanType: '30-Year Fixed'
       });
 
       // Check if alert should be sent
