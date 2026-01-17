@@ -1,8 +1,12 @@
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { config } from './config.js';
 import { logRate, getLastRate, hasRateChanged } from './logger.js';
 import { shouldAlert, sendRateAlert } from './alerter.js';
 import { sendToWebhook } from './webhook.js';
+
+// Add stealth plugin to avoid bot detection
+chromium.use(StealthPlugin());
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -36,7 +40,9 @@ export async function checkRates() {
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage'
+      '--disable-dev-shm-usage',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process'
     ]
   };
 
@@ -48,10 +54,14 @@ export async function checkRates() {
 
   try {
     const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
       viewport: { width: 1920, height: 1080 },
       locale: 'en-US',
-      timezoneId: 'America/Chicago'
+      timezoneId: 'America/Chicago',
+      deviceScaleFactor: 1,
+      isMobile: false,
+      hasTouch: false,
+      colorScheme: 'light'
     });
 
     const page = await context.newPage();
@@ -97,14 +107,20 @@ export async function checkRates() {
 
     // Now navigate to the OptimalBlue URL
     console.log(`\nNavigating to: ${config.targetUrl}`);
+
+    // Add random delay to seem more human
+    await delay(1000 + Math.random() * 2000);
+
     await page.goto(config.targetUrl, {
-      waitUntil: 'networkidle',
+      waitUntil: 'load',
       timeout: 60000
     });
 
     // Wait for page to fully load - OptimalBlue uses dynamic JS rendering
     console.log('Waiting for page to render...');
-    await delay(5000);
+
+    // Add longer wait for Angular app to initialize
+    await delay(8000);
 
     // Wait for form elements to appear (try multiple selectors)
     const formSelectors = ['select', 'input[type="text"]', 'input[type="number"]', 'button', '.form-control', '[class*="input"]', '[class*="select"]'];
