@@ -11,11 +11,11 @@ const CONFIG = {
     { hour: 13, minute: 0 },
     { hour: 16, minute: 0 }
   ],
-  // Note: Webhook disabled for extension due to Google Apps Script CORS limitations
-  // Use the backend (Railway) for Google Sheets logging instead
+  // Webhook to Railway API (which forwards to Google Sheets)
+  // Railway API has CORS enabled, so extension can call it directly
   webhook: {
-    enabled: false,  // Cannot be used from Chrome extension due to CORS
-    url: '',
+    enabled: true,
+    url: 'https://YOUR-RAILWAY-APP.railway.app/api/rate',  // Replace with your Railway app URL
     timeout: 10000
   }
 };
@@ -155,8 +155,8 @@ async function handleRateData(data, tabId) {
 
   console.log(`Rate logged: ${data.rate}% at ${timestamp}`);
 
-  // Note: Webhook is disabled for extension due to Google Apps Script CORS limitations
-  // Webhook works from backend (Railway) for Google Sheets logging and email alerts
+  // Send to Railway API (which forwards to Google Sheets)
+  await sendToWebhook(rateEntry, config);
 
   // Check if alert should be sent
   if (data.rate < config.alertThreshold) {
@@ -166,6 +166,60 @@ async function handleRateData(data, tabId) {
   // Close the tab
   if (tabId) {
     chrome.tabs.remove(tabId).catch(() => {});
+  }
+}
+
+/**
+ * Sends rate data to Railway API (which forwards to Google Sheets)
+ */
+async function sendToWebhook(rateData, config) {
+  const webhookConfig = config.webhook || CONFIG.webhook;
+
+  if (!webhookConfig.enabled) {
+    console.log('Webhook disabled, skipping...');
+    return { skipped: true };
+  }
+
+  if (!webhookConfig.url || webhookConfig.url.includes('YOUR-RAILWAY-APP')) {
+    console.log('Webhook URL not configured, skipping...');
+    return { skipped: true };
+  }
+
+  try {
+    console.log(`Sending rate data to Railway API: ${rateData.rate}%`);
+
+    const payload = {
+      rate: rateData.rate,
+      loanType: rateData.loanType || '30-Year Fixed',
+      timestamp: new Date().toISOString()
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), webhookConfig.timeout);
+
+    const response = await fetch(webhookConfig.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Railway API returned status ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('Railway API response:', result);
+
+    return result;
+  } catch (error) {
+    console.error('Error sending to Railway API:', error.message);
+    // Don't throw - we don't want webhook failures to break the main flow
+    return { error: error.message };
   }
 }
 

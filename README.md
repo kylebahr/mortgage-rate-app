@@ -41,11 +41,14 @@ Railway will automatically deploy. Your app will now run 24/7, checking rates at
 
 ---
 
-## Google Sheets Integration (Optional)
+## Google Sheets Integration
 
 Send rate data to a Google Sheet for tracking and get email alerts via Google Apps Script.
 
-**Note:** This only works with the **backend (Railway/Node.js)** deployment. Chrome extensions cannot use Google Apps Script webhooks due to CORS limitations.
+**How it works:**
+- Chrome extension → Railway API → Google Apps Script → Google Sheets
+- Backend scheduler → Google Apps Script → Google Sheets
+- Railway acts as a CORS proxy so the extension can log to Sheets
 
 ### Step 1: Create Google Apps Script
 
@@ -127,20 +130,35 @@ This is an automated alert from your Mortgage Rate Tracker.
 2. Copy the spreadsheet ID from the URL (the long string between `/d/` and `/edit`)
 3. Paste it into `SPREADSHEET_ID` in your Apps Script
 
-### Step 4: Configure the Backend
+### Step 4: Configure Railway Backend
 
 Set the `WEBHOOK_URL` environment variable to your Apps Script web app URL:
 
-**For Railway:**
+**In Railway Dashboard:**
 - Go to your project → Variables tab
-- Add `WEBHOOK_URL` with your Apps Script URL
+- Add `WEBHOOK_URL` = `https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec`
 
-**For Local Development:**
-```bash
-export WEBHOOK_URL='https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec'
+Railway will automatically redeploy.
+
+### Step 5: Configure Chrome Extension
+
+Update the extension to send data through Railway:
+
+1. Open `extension/background.js`
+2. Find line ~16 where it says `url: 'https://YOUR-RAILWAY-APP.railway.app/api/rate'`
+3. Replace with your actual Railway app URL (find it in Railway dashboard → Settings → Domains)
+4. Reload the extension in Chrome
+
+**Example:**
+```javascript
+webhook: {
+  enabled: true,
+  url: 'https://mortgage-rate-app-production.up.railway.app/api/rate',
+  timeout: 10000
+}
 ```
 
-Now every backend rate check (7am, 10am, 1pm, 4pm CT) will be logged to your Google Sheet, and you'll get email alerts via Gmail when rates drop below your threshold!
+Now both the extension AND backend will log to your Google Sheet!
 
 ---
 
