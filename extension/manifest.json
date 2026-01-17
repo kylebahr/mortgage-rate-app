@@ -11,7 +11,8 @@
   ],
   "host_permissions": [
     "https://www.commercebank.com/*",
-    "https://quickquote-consumer.optimalblue.com/*"
+    "https://quickquote-consumer.optimalblue.com/*",
+    "https://script.google.com/*"
   ],
   "background": {
     "service_worker": "background.js"
