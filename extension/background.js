@@ -11,11 +11,12 @@ const CONFIG = {
     { hour: 13, minute: 0 },
     { hour: 16, minute: 0 }
   ],
-  // Google Apps Script webhook for Sheets logging and email alerts
+  // Note: Webhook disabled for extension due to Google Apps Script CORS limitations
+  // Use the backend (Railway) for Google Sheets logging instead
   webhook: {
-    enabled: true,  // Set to false to disable webhook
-    url: 'https://script.google.com/macros/s/AKfycbyUkH7TU0DM-VeSL54ucoqA__Y5JBVkAMKxAx6LJSyG3MVcC2P7UP1sLrZivTXYmDbJsg/exec',
-    timeout: 10000  // Request timeout in milliseconds
+    enabled: false,  // Cannot be used from Chrome extension due to CORS
+    url: '',
+    timeout: 10000
   }
 };
 
@@ -154,8 +155,8 @@ async function handleRateData(data, tabId) {
 
   console.log(`Rate logged: ${data.rate}% at ${timestamp}`);
 
-  // Send to Google Apps Script webhook (for Sheets logging and email alerts)
-  await sendToWebhook(rateEntry, config);
+  // Note: Webhook is disabled for extension due to Google Apps Script CORS limitations
+  // Webhook works from backend (Railway) for Google Sheets logging and email alerts
 
   // Check if alert should be sent
   if (data.rate < config.alertThreshold) {
@@ -177,60 +178,6 @@ function showNotification(rate, threshold) {
   });
 
   console.log(`ALERT: Rate ${rate}% is below threshold ${threshold}%`);
-}
-
-/**
- * Sends rate data to Google Apps Script webhook
- */
-async function sendToWebhook(rateData, config) {
-  const webhookConfig = config.webhook || CONFIG.webhook;
-
-  if (!webhookConfig.enabled) {
-    console.log('Webhook disabled, skipping...');
-    return { skipped: true };
-  }
-
-  if (!webhookConfig.url) {
-    console.log('Webhook URL not configured, skipping...');
-    return { skipped: true };
-  }
-
-  try {
-    console.log(`Sending rate data to webhook: ${rateData.rate}%`);
-
-    const payload = {
-      rate: rateData.rate,
-      loanType: rateData.loanType || '30-Year Fixed',
-      timestamp: new Date().toISOString()
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), webhookConfig.timeout);
-
-    const response = await fetch(webhookConfig.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`Webhook returned status ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('Webhook response:', result);
-
-    return result;
-  } catch (error) {
-    console.error('Error sending to webhook:', error.message);
-    // Don't throw - we don't want webhook failures to break the main flow
-    return { error: error.message };
-  }
 }
 
 // Manual trigger from popup

@@ -43,7 +43,9 @@ Railway will automatically deploy. Your app will now run 24/7, checking rates at
 
 ## Google Sheets Integration (Optional)
 
-Send rate data to a Google Sheet for tracking and get email alerts via Google Apps Script:
+Send rate data to a Google Sheet for tracking and get email alerts via Google Apps Script.
+
+**Note:** This only works with the **backend (Railway/Node.js)** deployment. Chrome extensions cannot use Google Apps Script webhooks due to CORS limitations.
 
 ### Step 1: Create Google Apps Script
 
@@ -125,16 +127,20 @@ This is an automated alert from your Mortgage Rate Tracker.
 2. Copy the spreadsheet ID from the URL (the long string between `/d/` and `/edit`)
 3. Paste it into `SPREADSHEET_ID` in your Apps Script
 
-### Step 4: Configure the App
+### Step 4: Configure the Backend
 
-**For Backend (Railway/Local):**
-- Set the `WEBHOOK_URL` environment variable to your Apps Script web app URL
+Set the `WEBHOOK_URL` environment variable to your Apps Script web app URL:
 
-**For Chrome Extension:**
-- Open `extension/background.js`
-- Paste your webhook URL in the `CONFIG.webhook.url` field
+**For Railway:**
+- Go to your project → Variables tab
+- Add `WEBHOOK_URL` with your Apps Script URL
 
-Now every rate check will be logged to your Google Sheet, and you'll get email alerts via Gmail!
+**For Local Development:**
+```bash
+export WEBHOOK_URL='https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec'
+```
+
+Now every backend rate check (7am, 10am, 1pm, 4pm CT) will be logged to your Google Sheet, and you'll get email alerts via Gmail when rates drop below your threshold!
 
 ---
 
