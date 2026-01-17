@@ -2,6 +2,7 @@
 
 const DEFAULT_THRESHOLD = 5.625;
 const DEFAULT_EMAILS = ['kylebahr88@gmail.com', 'albbt2@gmail.com'];
+const DEFAULT_CHECK_TIMES = ['8:00', '10:00', '13:00', '16:00'];
 
 // Load saved settings on page load
 document.addEventListener('DOMContentLoaded', loadSettings);
@@ -14,7 +15,7 @@ document.getElementById('resetBtn').addEventListener('click', resetSettings);
 
 async function loadSettings() {
   try {
-    const result = await chrome.storage.local.get(['alertThreshold', 'emailRecipients']);
+    const result = await chrome.storage.local.get(['alertThreshold', 'emailRecipients', 'checkTimes']);
 
     // Load threshold
     const threshold = result.alertThreshold || DEFAULT_THRESHOLD;
@@ -23,6 +24,10 @@ async function loadSettings() {
     // Load emails
     const emails = result.emailRecipients || DEFAULT_EMAILS;
     document.getElementById('emails').value = emails.join('\n');
+
+    // Load check times
+    const checkTimes = result.checkTimes || DEFAULT_CHECK_TIMES;
+    document.getElementById('checkTimes').value = checkTimes.join('\n');
 
   } catch (error) {
     showStatus('Error loading settings: ' + error.message, 'error');
@@ -61,19 +66,42 @@ async function saveSettings() {
       return;
     }
 
+    // Get and parse check times
+    const timesText = document.getElementById('checkTimes').value;
+    const checkTimes = timesText
+      .split('\n')
+      .map(time => time.trim())
+      .filter(time => time.length > 0);
+
+    if (checkTimes.length === 0) {
+      showStatus('Please enter at least one check time', 'error');
+      return;
+    }
+
+    // Validate time format (HH:MM or H:MM)
+    const timeRegex = /^([0-9]|0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/;
+    const invalidTimes = checkTimes.filter(time => !timeRegex.test(time));
+
+    if (invalidTimes.length > 0) {
+      showStatus('Invalid time format(s): ' + invalidTimes.join(', ') + '. Use 24-hour format (e.g., 8:00, 13:00)', 'error');
+      return;
+    }
+
     // Save to storage
     await chrome.storage.local.set({
       alertThreshold: threshold,
-      emailRecipients: emails
+      emailRecipients: emails,
+      checkTimes: checkTimes
     });
 
-    showStatus(`Settings saved! Threshold: ${threshold}%, Recipients: ${emails.length}`, 'success');
+    showStatus(`Settings saved! Threshold: ${threshold}%, Recipients: ${emails.length}, Check times: ${checkTimes.length}`, 'success');
 
     // Update config in background script
     chrome.runtime.sendMessage({
       type: 'SETTINGS_UPDATED',
       threshold: threshold,
-      emails: emails
+      emails: emails,
+      checkTimes: checkTimes
     });
 
   } catch (error) {
@@ -84,6 +112,7 @@ async function saveSettings() {
 function resetSettings() {
   document.getElementById('threshold').value = DEFAULT_THRESHOLD;
   document.getElementById('emails').value = DEFAULT_EMAILS.join('\n');
+  document.getElementById('checkTimes').value = DEFAULT_CHECK_TIMES.join('\n');
   showStatus('Settings reset to defaults. Click "Save Settings" to apply.', 'success');
 }
 

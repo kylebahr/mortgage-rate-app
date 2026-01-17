@@ -26,7 +26,7 @@ chrome.runtime.onInstalled.addListener(() => {
   setupAlarms();
 
   // Initialize default settings if not already set
-  chrome.storage.local.get(['alertThreshold', 'emailRecipients'], (result) => {
+  chrome.storage.local.get(['alertThreshold', 'emailRecipients', 'checkTimes'], (result) => {
     const settings = {
       config: CONFIG,
       rateHistory: [],
@@ -41,6 +41,11 @@ chrome.runtime.onInstalled.addListener(() => {
     // Set default emails if not exists
     if (!result.emailRecipients) {
       settings.emailRecipients = ['kylebahr88@gmail.com', 'albbt2@gmail.com'];
+    }
+
+    // Set default check times if not exists
+    if (!result.checkTimes) {
+      settings.checkTimes = ['8:00', '10:00', '13:00', '16:00'];
     }
 
     chrome.storage.local.set(settings);
@@ -75,25 +80,46 @@ function checkIfTimeToRun() {
   const now = new Date();
   // Convert to CT (Central Time)
   const ctTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+  const currentDay = ctTime.getDay(); // 0 = Sunday, 6 = Saturday
   const currentHour = ctTime.getHours();
   const currentMinute = ctTime.getMinutes();
 
-  for (const time of CONFIG.checkTimes) {
-    if (currentHour === time.hour && currentMinute === time.minute) {
-      // Check if we already ran this minute
-      chrome.storage.local.get(['lastCheckMinute'], (result) => {
-        const lastCheck = result.lastCheckMinute || '';
-        const thisCheck = `${currentHour}:${currentMinute}`;
-
-        if (lastCheck !== thisCheck) {
-          chrome.storage.local.set({ lastCheckMinute: thisCheck });
-          console.log(`Scheduled check time reached: ${thisCheck} CT`);
-          performRateCheck();
-        }
-      });
-      break;
-    }
+  // Only run Monday-Friday (1-5)
+  if (currentDay === 0 || currentDay === 6) {
+    return; // Skip weekends
   }
+
+  // Load check times from storage
+  chrome.storage.local.get(['checkTimes'], (result) => {
+    const checkTimes = result.checkTimes || ['8:00', '10:00', '13:00', '16:00'];
+
+    for (const timeStr of checkTimes) {
+      // Parse time string (e.g., "8:00" or "13:00")
+      const [hourStr, minuteStr] = timeStr.split(':');
+      const hour = parseInt(hourStr, 10);
+      const minute = parseInt(minuteStr, 10);
+
+      if (currentHour === hour && currentMinute === minute) {
+        // Check if we already ran this minute
+        chrome.storage.local.get(['lastCheckMinute'], (result) => {
+          const lastCheck = result.lastCheckMinute || '';
+          const thisCheck = `${currentHour}:${currentMinute}`;
+
+          if (lastCheck !== thisCheck) {
+            chrome.storage.local.set({ lastCheckMinute: thisCheck });
+            console.log(`Scheduled check time reached: ${thisCheck} CT (${getDayName(currentDay)})`);
+            performRateCheck();
+          }
+        });
+        break;
+      }
+    }
+  });
+}
+
+function getDayName(dayNum) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[dayNum];
 }
 
 async function performRateCheck() {
