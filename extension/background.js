@@ -14,7 +14,7 @@ const CONFIG = {
   // Google Apps Script webhook for Sheets logging and email alerts
   webhook: {
     enabled: true,  // Set to false to disable webhook
-    url: '',  // Paste your deployed Apps Script web app URL here
+    url: 'https://script.google.com/macros/s/AKfycbyUkH7TU0DM-VeSL54ucoqA__Y5JBVkAMKxAx6LJSyG3MVcC2P7UP1sLrZivTXYmDbJsg/exec',
     timeout: 10000  // Request timeout in milliseconds
   }
 };
