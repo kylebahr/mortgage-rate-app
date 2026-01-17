@@ -15,7 +15,7 @@ const CONFIG = {
   // Railway API has CORS enabled, so extension can call it directly
   webhook: {
     enabled: true,
-    url: 'https://YOUR-RAILWAY-APP.railway.app/api/rate',  // Replace with your Railway app URL
+    url: 'https://mortgage-rate-app-production.up.railway.app/api/rate',
     timeout: 10000
   }
 };

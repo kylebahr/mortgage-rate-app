@@ -12,7 +12,7 @@
   "host_permissions": [
     "https://www.commercebank.com/*",
     "https://quickquote-consumer.optimalblue.com/*",
-    "https://script.google.com/*"
+    "https://mortgage-rate-app-production.up.railway.app/*"
   ],
   "background": {
     "service_worker": "background.js"
